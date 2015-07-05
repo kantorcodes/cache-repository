@@ -34,7 +34,7 @@ class Argument
     {
         if(array_key_exists($arrayKey, $input))
         {
-            $filtered  = $input[$$arrayKey];
+            $filtered  = $input[$arrayKey];
             $formatted = [];
             $i         = 0;
 
