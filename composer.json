@@ -1,0 +1,21 @@
+{
+    "name": "drapor/cache-repository",
+    "description": "",
+    "authors": [
+        {
+            "name": "Michael Kantor",
+            "email": "empathynyc@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0",
+        "illuminate/support": "5.0.*",
+        "drapor/networking" : "dev-master"
+    },
+    "autoload": {
+        "psr-4": {
+            "Drapor\\CacheRepository": "src/"
+        }
+    },
+    "minimum-stability": "stable"
+}
