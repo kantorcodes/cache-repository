@@ -174,6 +174,9 @@ $books = $this->respository
 </code>
 </li>
 <li>
+Caching support for more complex queries, joins, raws, etc
+</li>
+<li>
 Global broadcasting of regular model events. Create, delete, restore, etc.
 </li>
 <li>
