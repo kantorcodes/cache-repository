@@ -14,7 +14,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Drapor\\CacheRepository": "src/"
+            "Drapor\\CacheRepository\\": "src/"
         }
     },
     "minimum-stability": "stable"
