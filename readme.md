@@ -182,3 +182,10 @@ modify the whole collection each time.
 </li>
 
 </ul>
+
+<h2>
+License
+</h2>
+<p>
+The do-whatever-you-want-with-it attributation 
+</p>
