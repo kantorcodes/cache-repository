@@ -159,3 +159,26 @@ Calls to the <code>paginate()</code> method are not cached at this time. If you 
 You can alter the time a model is cached by calling <code>setCacheLifeTime()</code> before any method
 </li>
 </ul>
+
+<h2>
+Planned Feature List
+</h2>
+
+<ul>
+<li>
+Cached json serialization of each entity. <code> 
+$books = $this->respository
+->with('books')
+->whereCached('name','harry-potter')->
+->transformTo(BookTransformer::class);
+</code>
+</li>
+<li>
+Global broadcasting of regular model events. Create, delete, restore, etc.
+</li>
+<li>
+Fluid cache for pagination responses, that is updated when an element of the collection is modified and does not 
+modify the whole collection each time. 
+</li>
+
+</ul>
