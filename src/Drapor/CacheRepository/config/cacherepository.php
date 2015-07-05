@@ -1,5 +1,10 @@
 <?php 
 
 return [
-    'modelLocation' => 'Models'
+    'modelLocation' => 'Models',
+    'broadcast_url' => [
+    [
+      'baseUrl'  =>   'http://mysite.dev',
+      'endpoint' =>   'foo/bar'
+    ]],
 ];

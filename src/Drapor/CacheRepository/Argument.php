@@ -30,6 +30,35 @@ class Argument
         $this->keyword  = $keyword;
     }
 
+    public static function extract(array $input,$arrayKey)
+    {
+        if(array_key_exists($arrayKey, $input))
+        {
+            $filtered  = $input['search'];
+            $formatted = [];
+            $i         = 0;
+
+            foreach ($filtered as $key => $value)
+            {
+                $search = [
+                    'key' => $key,
+                    'value' => $value,
+                    'operator' => '='
+                ];
+                if ($i >= 1) {
+                    $search['keyword'] = 'AND';
+                }
+                $i++;
+                $formatted[] = $search;
+            }
+        }
+        else
+        {
+            return [];
+        }
+
+    }
+
 
     /**
      * @return string

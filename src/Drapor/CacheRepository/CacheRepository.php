@@ -315,10 +315,25 @@ class CacheRepository extends AbstractRepository
             Cache::forget($key);
         }
 
-        Queue::push(function($job) use($cacheArgs,$idKey,$key)
+        //We're going to "broadcast" the cache dump,
+        //so a second or third url can do whatever it needs with it
+        Queue::push(function($job) use($key,$value,$name)
         {
-            $request = new Networking();
-            
+            $request          = new Networking();
+            $broadcastUrls    = config('cacherepository.broadcast_url'); 
+
+            foreach($broadcastUrls as $url)
+            {
+                $request->baseUrl = $url['baseUrl']; 
+
+                $payload = [
+                  'key'    => $key,
+                  'value'  => $idKey,
+                  'name'   => $name
+                ]; 
+
+                $request->send($payload,$url['endpoint'],'POST');
+            }
 
         });
 
