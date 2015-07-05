@@ -1,6 +1,8 @@
 {
     "name": "drapor/cache-repository",
-    "description": "",
+    "description": "Simple to use Caching Repository for Laravel Eloquent",
+     "keywords": ["laravel","repository","eloquent","cache","caching","caching repository"],
+    "license": "Apache-2.0",
     "authors": [
         {
             "name": "Michael Kantor",
