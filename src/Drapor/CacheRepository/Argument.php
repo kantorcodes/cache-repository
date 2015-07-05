@@ -41,13 +41,16 @@ class Argument
             foreach ($filtered as $key => $value)
             {
                 $search = [
-                    'key' => $key,
-                    'value' => $value,
+                    'key'      => $key,
+                    'value'    => $value,
                     'operator' => '='
                 ];
-                if ($i >= 1) {
+                
+                if ($i >= 1)
+                {
                     $search['keyword'] = 'AND';
                 }
+
                 $i++;
                 $formatted[] = $search;
             }

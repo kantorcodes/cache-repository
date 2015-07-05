@@ -7,18 +7,15 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Drapor\CacheRepository\Eloquent\BaseModel;
 use Drapor\CacheRepository\Contracts\EloquentRepositoryInterface;
-use Drapor\Networking;
+use Drapor\Networking\Networking;
 use Queue;
 /* @var $model \Eloquent  */
 
 class CacheRepository extends AbstractRepository
 {
 
-    /* @var $updatesChildren bool */ 
-    public  $updatesChildren;
     /* @var $cacheLifeTime int   */
     public  $cacheLifeTime;
-
 
     /**
      * @param BaseModel $model
@@ -89,7 +86,6 @@ class CacheRepository extends AbstractRepository
     public function update($id, array $data)
     {
         $old = $this->retrieve($id);
-        //dd($old->toArray());
 
         $this->forget('id',$id);
 
@@ -225,7 +221,7 @@ class CacheRepository extends AbstractRepository
     public function getFillableColumns()
     {
         return Cache::rememberForever("{$this->name}.fillable", function () {
-             parent::__getFillableColumns();
+             return parent::getFillableColumns();
         });
     }
 
@@ -276,7 +272,26 @@ class CacheRepository extends AbstractRepository
         return $model;
     }
 
+   /*
+    * @var string $idKey 
+    * @var string $cacheKey
+    * @return void
+    */
 
+    public static function squash($idKey,$cacheKey)
+    {
+        Cache::tags($idKey)->flush();
+
+        //Techically the tag flush should be enough to dump it out
+        //But if for whatever the developer doesn't pass in an, then
+        //this should definately get rid of it.
+        
+        if(Cache::has($cacheKey))
+        {
+            Cache::forget($cacheKey);
+        }
+
+    }
 
     /**
      * Forget the cache for a specific Id.
@@ -299,42 +314,33 @@ class CacheRepository extends AbstractRepository
         $this->arguments->add($cacheArg);
 
         //This key will only be of the model we want to forget
-        $key       = $this->getCacheKey($name);
-        $cacheArgs = unserialize($key);
+        $cacheKey  = $this->getCacheKey($name);
+        $cacheArgs = unserialize($cacheKey);
         $idKey     = $name.'|'.$cacheArgs['key'].'|'.$cacheArgs['value'];
-    
 
-        Cache::tags($idKey)->flush();
-
-        //Techically the tag flush should be enough to dump it out
-        //But if for whatever the developer doesn't pass in an, then
-        //this should definately get rid of it.
-        
-        if(Cache::has($key))
-        {
-            Cache::forget($key);
-        }
+        self::squash($idKey,$cacheKey);
 
         //We're going to "broadcast" the cache dump,
-        //so a second or third url can do whatever it needs with it
+        //So any listening parties can also remove their version of model
         Queue::push(function($job) use($key,$value,$name)
         {
-            $request          = new Networking();
-            $broadcastUrls    = config('cacherepository.broadcast_url'); 
+            $request                   = new Networking();
+            $request->options['query'] = true;
+            $broadcastUrls             = config('cacherepository.removal_broadcast_urls'); 
 
             foreach($broadcastUrls as $url)
             {
-                $request->baseUrl = $url['baseUrl']; 
+                $request->baseUrl = $url; 
 
                 $payload = [
                   'key'    => $key,
-                  'value'  => $idKey,
+                  'value'  => $value,
                   'name'   => $name
                 ]; 
 
-                $request->send($payload,$url['endpoint'],'POST');
+             $request->send($payload,"/cache/broadcast",'GET');
             }
-
+            $job->delete();
         });
 
 

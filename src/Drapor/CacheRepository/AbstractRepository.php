@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Drapor\CacheRepository\Exceptions\MissingKeyException;
 use Drapor\CacheRepository\Exceptions\MissingValueException;
+use Drapor\CacheRepository\Relation;
 
 abstract class AbstractRepository implements EloquentRepositoryInterface
 {
@@ -21,9 +22,9 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
 
     protected $name;
     /* @var $relations Collection */
-    public  $relations;
+    protected  $relations;
 
-    public  $defaultAccessible = ['id','created_at','updated_at'];
+    protected  $defaultAccessible = ['id','created_at','updated_at'];
 
     protected $withTrashed;
 
@@ -31,6 +32,8 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
 
     /* @var $arguments Collection */
     protected $arguments;
+
+    protected $updatesChildren;
 
        /**
      * @param BaseModel $model
@@ -228,6 +231,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         $collection = [];
         foreach ($relations as $relation)
         {
+
             //If the developer passes in a Relation,
             // we'll just roll with that, otherwise, we'll type check
             if($relation instanceof Relation)
@@ -239,7 +243,9 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
             if (!is_array($relation))
             {
                 $collection[$relation] = new Relation($relation);
-            } else
+            }
+
+            else
             {
             	//**will depreciate
                 $r = new Relation($relation['name']);
@@ -448,6 +454,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
       public function getFillableColumns()
       {
     	 $fillableColumns = [];
+
             //Get All The Columns From The Related Models
             if ($this->updatesChildren && count($this->relations) >= 1)
             {
@@ -456,7 +463,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
                     if (!$relation->nested)
                     {
                         /** @var BaseModel $relatedModel */
-                        $name = $relation->name;
+                        $name         = $relation->name;
 
                         $relatedModel = $this->newQuery()->$name()->first();
 

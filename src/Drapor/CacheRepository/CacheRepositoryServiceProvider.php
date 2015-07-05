@@ -26,6 +26,11 @@ class CacheRepositoryServiceProvider extends ServiceProvider {
 		$configPath = __DIR__.'/config/cacherepository.php';
 
 		$this->publishes([$configPath => config_path('cacherepository.php')], 'config');
+
+		 if (! $this->app->routesAreCached())
+		 {
+              require __DIR__.'/routes.php';
+         }
 	}
 
 	/**

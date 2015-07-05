@@ -60,7 +60,7 @@ Step 2: Create a Repository Class
         }
 
 <p> 
-   Now You can Inject the Repository wherever you need to use it.
+    Now You can Inject the Repository wherever you need to use it.
     This can be done in quite a few ways due to Laravel's magic, but we're 
     going to keep it simple and use a common example.
 </p>

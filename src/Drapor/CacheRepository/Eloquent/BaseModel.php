@@ -26,8 +26,8 @@ abstract class BaseModel extends Model
 
     public function setColumns()
     {
-        $table = $this->getTable().'.columns';
-        $this->columns = Cache::rememberForever($table, function () use ($table) {
+        $table = $this->getTable();
+        $this->columns = Cache::rememberForever("$table.columns", function () use ($table) {
             return \Schema::getColumnListing($table);
         });
 

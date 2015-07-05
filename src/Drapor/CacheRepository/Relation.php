@@ -46,8 +46,7 @@ class Relation
     {
         $this->name       = $name;
         $this->clearCache = $clearCache;
-
-        $this->nested = str_contains($name, '.') ? true : false;
+        $this->nested     = str_contains($name, '.') ? true : false;
 
         if (!$this->nested)
         {
