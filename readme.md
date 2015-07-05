@@ -17,6 +17,10 @@ Add the service Provider to your app.php
 </p>
      'Drapor\CacheRepository\CacheRepositoryServiceProvider' 
 
+<p>
+Publish the config
+</p>
+    ` php artisan vendor:publish `
 <h2>
 Usage 
 </h2>
