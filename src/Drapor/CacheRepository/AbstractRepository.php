@@ -268,7 +268,8 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         {
             $relations =  $this->relations->lists('name');
             //Laravel 5.1 compatability change 
-            if($relations instanceof Collection){
+            if($relations instanceof Collection)
+            {
                 $relations = $relations->toArray();
             }
             return $relations;
@@ -287,7 +288,8 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         if(is_array($relations))
         {
             $this->setRelations($relations);
-        }elseif(is_string($relations))
+        }
+        elseif(is_string($relations))
         {
             //If the developer provided multiple arguments we will merge them
             $otherArgs = func_get_args();
