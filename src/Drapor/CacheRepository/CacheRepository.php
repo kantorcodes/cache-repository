@@ -144,7 +144,7 @@ class CacheRepository extends AbstractRepository
 
         //cache() returns a collection, so lets give back the first model.
 
-        return $this->query->first();
+        return $this->query;
     }
 
 
