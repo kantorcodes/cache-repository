@@ -159,7 +159,6 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         if($this->query !== null)
         {
             $this->arguments = new Collection();
-            $this->relations = new Collection();
         }
 
         $this->query     =  new $this->model;
