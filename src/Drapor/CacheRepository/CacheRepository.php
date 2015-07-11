@@ -60,7 +60,7 @@ class CacheRepository extends AbstractRepository
      * @param $value
      * @return Collection|BaseModel
      */
-    
+
     public function whereHas($relation,$key,$value)
     {
         $this->query = $this->newQuery();
@@ -104,7 +104,7 @@ class CacheRepository extends AbstractRepository
 
         //Finally after the cache has been dumped, call retrieve again
         //to put it back in with the updated fields. 
-        
+
         return $this->retrieve($id);
     }
 
@@ -126,7 +126,7 @@ class CacheRepository extends AbstractRepository
         return $model;
     }
 
-     /**
+    /**
      * @param $id
      * @return BaseModel
      */
@@ -135,16 +135,20 @@ class CacheRepository extends AbstractRepository
         //Cache forever.
         $this->setCacheLifeTime(0);
         //Retrieve first model model from array.
+        $argument = new Argument('id',$id);
+        $this->arguments->add($argument);
 
-        $this->query = $this->whereCached('id', $id);
-    
-        return $this->first();
+        $this->query = $this->cache(function() use ($id) {
+            return $this->retrieve($id);
+        });
+
+        return $this->query;
     }
 
 
     /**
-     * This method will flush all ids from the cache, 
-     * and then proceed to delete them. 
+     * This method will flush all ids from the cache,
+     * and then proceed to delete them.
      * If the resource was deleted this will also return false
      * @param $id
      * @return bool
@@ -152,15 +156,15 @@ class CacheRepository extends AbstractRepository
     public function destroy($ids)
     {
         $ids       = (array)$ids;
-        $didDelete = false; 
+        $didDelete = false;
 
         foreach($ids as $id)
         {
-           $this->forget('id',$id);
+            $this->forget('id',$id);
         }
 
         $didDelete =  $this->model->destroy($ids) == 0;
-        
+
         return $didDelete;
     }
 
@@ -207,7 +211,7 @@ class CacheRepository extends AbstractRepository
      */
     public function whereCached($key, $value, array $operators = ['='], array $keywords = ['AND'])
     {
-    
+
         $callback  = function() use ($key,$value,$operators,$keywords){
             return $this->where($key, $value, $operators,$keywords);
         };
@@ -221,7 +225,7 @@ class CacheRepository extends AbstractRepository
     public function getFillableColumns()
     {
         return Cache::rememberForever("{$this->name}.fillable", function () {
-             return parent::getFillableColumns();
+            return parent::getFillableColumns();
         });
     }
 
@@ -272,11 +276,11 @@ class CacheRepository extends AbstractRepository
         return $model;
     }
 
-   /*
-    * @var string $idKey 
-    * @var string $cacheKey
-    * @return void
-    */
+    /*
+     * @var string $idKey
+     * @var string $cacheKey
+     * @return void
+     */
 
     public static function squash($idKey,$cacheKey)
     {
@@ -285,7 +289,7 @@ class CacheRepository extends AbstractRepository
         //Techically the tag flush should be enough to dump it out
         //But if for whatever the developer doesn't pass in an, then
         //this should definately get rid of it.
-        
+
         if(Cache::has($cacheKey))
         {
             Cache::forget($cacheKey);
@@ -326,19 +330,19 @@ class CacheRepository extends AbstractRepository
         {
             $request                   = new Networking();
             $request->options['query'] = true;
-            $broadcastUrls             = config('cacherepository.removal_broadcast_urls'); 
+            $broadcastUrls             = config('cacherepository.removal_broadcast_urls');
 
             foreach($broadcastUrls as $url)
             {
-                $request->baseUrl = $url; 
+                $request->baseUrl = $url;
 
                 $payload = [
-                  'key'    => $key,
-                  'value'  => $value,
-                  'name'   => $name
-                ]; 
+                    'key'    => $key,
+                    'value'  => $value,
+                    'name'   => $name
+                ];
 
-             $request->send($payload,"/cache/broadcast",'GET');
+                $request->send($payload,"/cache/broadcast",'GET');
             }
             $job->delete();
         });
@@ -353,7 +357,7 @@ class CacheRepository extends AbstractRepository
      * forget each relatedee.
      * @param $model
      */
-    
+
     public function forgetParentModels($model)
     {
         foreach ($this->relations->toArray() as $relation)
@@ -366,17 +370,17 @@ class CacheRepository extends AbstractRepository
 
                 if($relatedModels instanceof Collection)
                 {
-                   foreach($relatedModels->toArray() as $relatedModel)
-                   {
-                      $this->forget('id',$relatedModel['id'],str_singular($relation->name));
-                   }
+                    foreach($relatedModels->toArray() as $relatedModel)
+                    {
+                        $this->forget('id',$relatedModel['id'],str_singular($relation->name));
+                    }
                 }
                 else if($relatedModels instanceof BaseModel)
-               {
-                  $this->forget('id',$relatedModels['id'],str_singular($relation->name));
-               }
-               //If the developer specified a relation, but it doesn't contain anything
-               //then there isn't anything to clear anyway. 
+                {
+                    $this->forget('id',$relatedModels['id'],str_singular($relation->name));
+                }
+                //If the developer specified a relation, but it doesn't contain anything
+                //then there isn't anything to clear anyway.
             }
         }
     }
@@ -420,9 +424,9 @@ class CacheRepository extends AbstractRepository
         }
 
         $cacheKey         = $this->getCacheKey();
-        $cacheArgs        = unserialize($cacheKey);    
+        $cacheArgs        = unserialize($cacheKey);
         $idTagKey         = $this->name.'|'.$cacheArgs['key'].'|'.$cacheArgs['value'];
-      
+
         $collectionTagKey = $this->name;
 
         if ($this->getCacheLifeTime() === 0)

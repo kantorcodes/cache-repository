@@ -10,7 +10,7 @@ use Drapor\CacheRepository\Relation;
 
 abstract class AbstractRepository implements EloquentRepositoryInterface
 {
-    
+
     /* @var $model \Eloquent */
     protected $model;
     /* @var $query \Eloquent */
@@ -35,7 +35,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
 
     protected $updatesChildren;
 
-       /**
+    /**
      * @param BaseModel $model
      * @param $name
      */
@@ -56,32 +56,32 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
        @return BaseModel
      */
     abstract function update($id,array $data);
-      /*
-       @return BaseModel
-     */
+    /*
+     @return BaseModel
+   */
     abstract function find($id);
 
-     /*
-       @return BaseModel
-     */
+    /*
+      @return BaseModel
+    */
     abstract function create(array $data);
-    
-      /*
-       @return Bool
-     */
-    abstract function destroy($id);
 
-     /*
-       @return Bool
-     */
+    /*
+     @return Bool
+   */
+    abstract function destroy($ids);
+
+    /*
+      @return Bool
+    */
     abstract function forceDelete($id);
 
-     /*
-       @return BaseModel
-     */
+    /*
+      @return BaseModel
+    */
     abstract function restore($id);
 
-     /**
+    /**
      * @return Collection|BaseModel
      */
     public function get()
@@ -108,7 +108,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         return $this->query;
     }
 
-      /**
+    /**
      * @param $operator
      * @return $this
      */
@@ -153,8 +153,16 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
      */
     public function newQuery()
     {
-        $this->query =  new $this->model;
+        //This simple check should ensure that if called
+        //after a query was already executed, that the proceeding one will
+        //be brand new.
+        if($this->query !== null)
+        {
+            $this->arguments = new Collection();
+            $this->relations = new Collection();
+        }
 
+        $this->query     =  new $this->model;
         if($this->withTrashed && $this->supportsDeletes)
         {
             //SomeModel::withTrashed()->...
@@ -173,7 +181,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
     }
 
 
-     /**
+    /**
      * @param $key
      * @param $value
      * @param $operators
@@ -247,7 +255,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
 
             else
             {
-            	//**will depreciate
+                //**will depreciate
                 $r = new Relation($relation['name']);
                 if (array_key_exists('clearcache', $relation))
                 {
@@ -299,7 +307,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         return $this;
     }
 
-     /**
+    /**
      * @param string $key
      * @param string $direction
      * @return $this
@@ -307,13 +315,13 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
     public function orderBy($key,$direction)
     {
         $this->order = [
-          'key'         => $key,
-           'direction'  => $direction
+            'key'         => $key,
+            'direction'  => $direction
         ];
         $this->isSorted = true;
         return $this;
     }
-     /**
+    /**
      * @param $id
      * @return BaseModel
      */
@@ -326,7 +334,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
     }
 
 
-     /**
+    /**
      * We Want To Check That the array being passed has at least
      * one term to search by...
      * @param  $perPage
@@ -366,7 +374,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         return $this->query;
     }
 
-      /**
+    /**
      * @param String $key
      * @param String $value
      * @param array $operators
@@ -397,7 +405,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         return $model->get();
     }
 
-      /**
+    /**
      * Returns a filtered out model using search params passed.
      * We know that all entities will have an id column, so by
      * default we allow those queries through, all other keys need to pass the test.
@@ -416,8 +424,8 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
             $results->orderBy($this->order['key'],$this->order['direction']);
         }
 
-       foreach($this->arguments as $key => $arg)
-       {
+        foreach($this->arguments as $key => $arg)
+        {
 
             if (in_array($arg->key,$this->defaultAccessible) || in_array($arg->key, $this->getFillableColumns()))
             {
@@ -458,46 +466,46 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         return $results;
     }
 
-      public function getFillableColumns()
-      {
-    	 $fillableColumns = [];
+    public function getFillableColumns()
+    {
+        $fillableColumns = [];
 
-            //Get All The Columns From The Related Models
-            if ($this->updatesChildren && count($this->relations) >= 1)
+        //Get All The Columns From The Related Models
+        if ($this->updatesChildren && count($this->relations) >= 1)
+        {
+            foreach ($this->relations->toArray() as $relation)
             {
-                foreach ($this->relations->toArray() as $relation)
+                if (!$relation->nested)
                 {
-                    if (!$relation->nested)
+                    /** @var BaseModel $relatedModel */
+                    $name         = $relation->name;
+
+                    $relatedModel = $this->newQuery()->$name()->first();
+
+                    if ($relatedModel !== null)
                     {
-                        /** @var BaseModel $relatedModel */
-                        $name         = $relation->name;
+                        $guarded           = $relatedModel->getGuarded();
+                        $fillableColumns[] = $relation->getColumns();
 
-                        $relatedModel = $this->newQuery()->$name()->first();
-
-                        if ($relatedModel !== null)
+                        //Unset properties that have been explicitly marked as gaurded.
+                        foreach ($guarded as $k => $v)
                         {
-                            $guarded           = $relatedModel->getGuarded();
-                            $fillableColumns[] = $relation->getColumns();
-
-                            //Unset properties that have been explicitly marked as gaurded.
-                            foreach ($guarded as $k => $v)
-                            {
-                                unset($fillableColumns[$k]);
-                            }
+                            unset($fillableColumns[$k]);
                         }
                     }
                 }
             }
-            $modelColumns =  $this->newQuery()->getFillable();
-            //Get All The Columns From The Current Model
-            foreach ($modelColumns as $key => $col)
-            {
-                $fillableColumns[$key] = $col;
-            }
-            return $fillableColumns;
+        }
+        $modelColumns =  $this->newQuery()->getFillable();
+        //Get All The Columns From The Current Model
+        foreach ($modelColumns as $key => $col)
+        {
+            $fillableColumns[$key] = $col;
+        }
+        return $fillableColumns;
     }
 
-      /**
+    /**
      * @param array $data
      * @return array
      */
