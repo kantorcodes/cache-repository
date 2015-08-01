@@ -464,7 +464,7 @@ class CacheRepository extends AbstractRepository
             'operators' => $this->arguments->implode('operator','|'),
             'keywords'  => $this->arguments->implode('keyword','|'),
             'name'      => $modelName !== null ? $modelName : $this->name,
-            'relations' => $this->relations->implode('name','|')
+            'relations' => count($this->relations) >= 1 ? $this->relations->implode('name','|') : '|'
         ];
 
         return serialize($args);
