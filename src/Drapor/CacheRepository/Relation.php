@@ -50,21 +50,24 @@ class Relation
 
         if (!$this->nested)
         {
-            $appName       = $this->getAppNamespace();
 
             if(class_exists($name))
             {
-                $model       = App::make($name);
-                $this->name  = $model->name;
-                return $model->getFillable();
+                $model         = App::make($name);
+                $this->name    = (new \ReflectionClass($name))->getShortName();
+                $this->columns = $model->getColumns();
             }
-            /** @var \Drapor\CacheRepository\Eloquent\BaseModel $model */
-            $modelLocation =  studly_case(config('cacherepository.modelLocation'));
-            $modelName     =  str_singular(studly_case($this->name));
-            $model         =  App::make(sprintf("%s%s\\%s",$appName,$modelLocation,$modelName));
+            else
+            {
+                $appName       = $this->getAppNamespace();
+                /** @var \Drapor\CacheRepository\Eloquent\BaseModel $model */
+                $modelLocation =  studly_case(config('cacherepository.modelLocation'));
+                $modelName     =  str_singular(studly_case($this->name));
+                $model         =  App::make(sprintf("%s%s\\%s",$appName,$modelLocation,$modelName));
 
-            //Quickly create an instance of the model and grab its fillable fields from cache.
-            $this->columns = $model->getColumns();
+                //Quickly create an instance of the model and grab its fillable fields from cache.
+                $this->columns = $model->getColumns();
+          }
         } 
         else
         {
