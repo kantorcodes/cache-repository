@@ -46,12 +46,18 @@ class Relation
     {
         $this->name       = $name;
         $this->clearCache = $clearCache;
-        $this->nested     = str_contains($name, '.') ? true : false;
+        $this->nested     = str_contains($name, '.');
 
         if (!$this->nested)
         {
-
             $appName       = $this->getAppNamespace();
+
+            if(class_exists($name))
+            {
+                $model       = App::make($name);
+                $this->name  = $model->name;
+                return $model->getFillable();
+            }
             /** @var \Drapor\CacheRepository\Eloquent\BaseModel $model */
             $modelLocation =  studly_case(config('cacherepository.modelLocation'));
             $modelName     =  str_singular(studly_case($this->name));
