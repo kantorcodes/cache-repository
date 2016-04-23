@@ -3,7 +3,7 @@
 use Drapor\CacheRepository\Eloquent\BaseModel;
 use Drapor\CacheRepository\Contracts\EloquentRepositoryInterface;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection;
 use Drapor\CacheRepository\Exceptions\MissingKeyException;
 use Drapor\CacheRepository\Exceptions\MissingValueException;
 use Drapor\CacheRepository\Relation;
