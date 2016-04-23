@@ -4,7 +4,7 @@ namespace Drapor\CacheRepository;
 
 use Cache;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection;
 use Drapor\CacheRepository\Eloquent\BaseModel;
 use Drapor\CacheRepository\Contracts\EloquentRepositoryInterface;
 use Drapor\Networking\Networking;
