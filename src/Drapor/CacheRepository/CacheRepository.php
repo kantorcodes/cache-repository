@@ -417,15 +417,15 @@ class CacheRepository extends AbstractRepository
         //Infinitely tag all related models no matter what relations are used for later
             //For example, we might call a User object with a certain relation one time,
             //and another the next.
-            return Cache::tags($idTagKey, $collectionTagKey)->rememberForever($cacheKey, function () {
-                use ($query)
+            return Cache::tags($idTagKey, $collectionTagKey)->rememberForever($cacheKey, function () 
+                use ($query){
             
                 /** @var Collection $this */
                 return $query();
             });
         } else {
-            return Cache::tags($idTagKey, $collectionTagKey)->remember($cacheKey, $this->getCacheLifeTime(), function () {
-                use ($query)
+            return Cache::tags($idTagKey, $collectionTagKey)->remember($cacheKey, $this->getCacheLifeTime(), function () 
+                use ($query){
             
                 /** @var Collection $this */
                 return $query();
