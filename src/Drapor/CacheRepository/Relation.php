@@ -67,7 +67,7 @@ class Relation
                 {
                     $modelLocation = $modelLocation[$modelName];
                 }
-                $model   =  App::make(str_replace('\\\\','\\',sprintf("%s%s\\%s",$appName,$modelLocation[$modelName],$modelName)));
+                $model   =  App::make(str_replace('\\\\','\\',sprintf("%s%s\\%s",$appName,$modelLocation,$modelName)));
                 //Quickly create an instance of the model and grab its fillable fields from cache.
                 $this->columns = $model->getColumns();
           }
