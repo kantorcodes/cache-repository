@@ -61,10 +61,13 @@ class Relation
             {
                 $appName       = $this->getAppNamespace();
                 /** @var \Drapor\CacheRepository\Eloquent\BaseModel $model */
-                $modelLocation =  studly_case(config('cacherepository.modelLocation'));
+                $modelLocation =  config('cacherepository.modelLocation');
                 $modelName     =  str_singular(studly_case($this->name));
-                $model         =  App::make(sprintf("%s%s\\%s",$appName,$modelLocation,$modelName));
-
+                if(is_array($modelLocation) && array_key_exists($modelName, $modelLocation))
+                {
+                    $modelLocation = $modelLocation[$modelName];
+                }
+                $model   =  App::make(str_replace('\\\\','\\',sprintf("%s%s\\%s",$appName,$modelLocation[$modelName],$modelName)));
                 //Quickly create an instance of the model and grab its fillable fields from cache.
                 $this->columns = $model->getColumns();
           }
