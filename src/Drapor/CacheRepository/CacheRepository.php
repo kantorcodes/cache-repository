@@ -1,39 +1,22 @@
-<?php namespace Drapor\CacheRepository;
+<?php
 
-use Drapor\CacheRepository\Eloquent\BaseModel;
-use Drapor\CacheRepository\Contracts\EloquentRepositoryInterface;
+namespace Drapor\CacheRepository;
+
+use Cache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Drapor\CacheRepository\Exceptions\MissingKeyException;
-use Drapor\CacheRepository\Exceptions\MissingValueException;
-use Drapor\CacheRepository\Relation;
+use Drapor\CacheRepository\Eloquent\BaseModel;
+use Drapor\CacheRepository\Contracts\EloquentRepositoryInterface;
+use Drapor\Networking\Networking;
+use Queue;
 
-abstract class AbstractRepository implements EloquentRepositoryInterface
+/* @var $model \Eloquent  */
+
+class CacheRepository extends AbstractRepository
 {
 
-    /* @var $model \Eloquent */
-    protected $model;
-    /* @var $query \Eloquent */
-    protected $query;
-    /* @var $array */
-    protected $order;
-    /* @var $isSorted */
-    protected $isSorted;
-
-    protected $name;
-    /* @var $relations Collection */
-    protected $relations;
-
-    protected $defaultAccessible = ['id','created_at','updated_at'];
-
-    protected $withTrashed;
-
-    protected $betweenOperator;
-
-    /* @var $arguments Collection */
-    protected $arguments;
-
-    protected $updatesChildren;
+    /* @var $cacheLifeTime int   */
+    public $cacheLifeTime;
 
     /**
      * @param BaseModel $model
@@ -41,470 +24,430 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
      */
     public function __construct(BaseModel $model, $name)
     {
-        $this->model           = $model;
-        $this->name            = str_singular($name);
-        $this->withTrashed     = false;
-        $this->updatesChildren = true;
-        $this->betweenOperator = '%BETWEEN%';
-        $this->arguments       = new Collection();
-        $this->supportsDeletes = array_key_exists('deleted_at', $this->getFillableColumns());
-
-        //Alternatively we could have done property_exists($model,'forceDeleting');
+        parent::__construct($model, $name);
     }
 
-    /*
-       @return BaseModel
-     */
-    abstract function update($id, array $data);
-    /*
-     @return BaseModel
-   */
-    abstract function find($id);
-
-    /*
-      @return BaseModel
-    */
-    abstract function create(array $data);
-
-    /*
-     @return Bool
-   */
-    abstract function destroy($ids);
-
-    /*
-      @return Bool
-    */
-    abstract function forceDelete($id);
-
-    /*
-      @return BaseModel
-    */
-    abstract function restore($id);
-
     /**
-     * @return Collection|BaseModel
+     * @return int
      */
-    public function get()
+    public function getCacheLifeTime()
     {
-        if ($this->query == null) {
-            $this->query = $this->newQuery()
-                ->with($this->getRelations());
-
-            return $this->query->get();
-        }
-        return $this->query->get();
+        return $this->cacheLifeTime;
     }
 
     /**
-     * @return \Eloquent
-     */
-    public function getQuery()
-    {
-        if ($this->query == null) {
-            return $this->query = new $this->model;
-        }
-        return $this->query;
-    }
-
-    /**
-     * @param $operator
+     * @param int $cacheLifeTime
      * @return $this
      */
-    public function setBetweenOperator($operator)
+    public function setCacheLifeTime($cacheLifeTime)
     {
-        $this->betweenOperator = $operator;
+        $this->cacheLifeTime = $cacheLifeTime;
         return $this;
     }
 
     /**
+     * Manually turn off caching completely.
      * @return $this
      */
-    public function withTrashed()
+    public function noCache()
     {
-
-        $this->withTrashed = true;
-
+        $this->cacheLifeTime = -1;
         return $this;
     }
-    /**
-     * @return BaseModel|static[]
-     */
-    public function first()
-    {
-        return $this->query->first();
-    }
 
     /**
-     * @return array
-     */
-    public function toArray()
-    {
-        return $this->query->toArray();
-    }
-
-    /**
-     * Create a new instance of the eloquent model
-     * If withTrashed() was called earlier and this model
-     * can support soft deletes, then we'll go ahead and
-     * prepare that for the proceeding calls
-     * @return BaseModel
-     */
-    public function newQuery()
-    {
-        //This simple check should ensure that if called
-        //after a query was already executed, that the proceeding one will
-        //be brand new.
-        if ($this->query !== null) {
-            $this->arguments = new Collection();
-        }
-
-        $this->query     =  new $this->model;
-        if ($this->withTrashed && $this->supportsDeletes) {
-        //SomeModel::withTrashed()->...
-            $this->query = $this->query->withTrashed();
-        }
-
-        return $this->query;
-    }
-
-    /**
-     * @return array
-     */
-    public function getFillable()
-    {
-        return $this->model->getFillable();
-    }
-
-
-    /**
+     * @param $relation
      * @param $key
      * @param $value
-     * @param $operators
-     * @param array $keywords
-     * @throws MissingKeyException
-     * @throws MissingValueException
+     * @return Collection|BaseModel
      */
-    protected function setArguments($key, $value, array $operators, array $keywords)
+
+    public function whereHas($relation, $key, $value)
     {
-        $key      = (array)$key;
-        $value    = (array)$value;
-        $argCount = count($key);
+        $this->query = $this->newQuery();
 
-        for ($i = 0; $i < $argCount; $i++) {
-            if (!array_key_exists($i, $key)) {
-                $data = [
-                    'arguments' => $argCount,
-                    'keys'      => count($key)
-                ];
-                throw new MissingKeyException($data);
-            }
+        $callback  = function () use ($key, $value, $relation) {
 
-            if (!array_key_exists($i, $value)) {
-                $data = [
-                    'arguments' => $argCount,
-                    'values' => count($value)
-                ];
-                throw new MissingValueException($data);
-            }
+            $this->query->whereHas($relation, function ($query) use ($key, $value) {
+                /* @var $query Builder  */
+                return $query->where($key, $value)->get();
+            });
+        };
+        $argument = new Argument($key, $value);
+        $this->arguments->push($argument);
 
-            $arg           = new Argument($key[$i], $value[$i]);
-            $arg->keyword  = array_key_exists($i, $keywords) ? $keywords[$i] : 'AND';
-            $arg->operator = array_key_exists($i, $operators) ? $operators[$i] : '=';
-            $this->arguments->push($arg);
-        }
+        return $this->cache($callback);
     }
 
-    /**
-     * @return Collection
-     */
-    public function getArguments()
-    {
-        return $this->arguments;
-    }
-
-    /**
-     * @param array $relations
-     */
-    public function setRelations(array $relations)
-    {
-        $collection = [];
-        foreach ($relations as $relation) {
-        //If the developer passes in a Relation,
-            // we'll just roll with that, otherwise, we'll type check
-            if ($relation instanceof Relation) {
-                $collection[$relation->name] = $relation;
-                continue;
-            }
-
-            if (!is_array($relation)) {
-                $collection[$relation] = new Relation($relation);
-            } else {
-                //**will depreciate
-                $r = new Relation($relation['name']);
-                if (array_key_exists('clearcache', $relation)) {
-                    $r->setClearCache($relation['clearcache']);
-                }
-                $collection[$r->name] = $relation;
-            }
-        }
-        $this->relations = new Collection($collection);
-    }
-
-    /**
-     * @return Relation[]|array
-     */
-    public function getRelations()
-    {
-        if (count($this->relations) >= 1) {
-            $relations =  $this->relations->lists('name');
-            //Laravel 5.1 compatability change
-            if ($relations instanceof Collection) {
-                $relations = $relations->toArray();
-            }
-            return $relations;
-        } else {
-            return [];
-        }
-    }
-
-    /**
-     * @param array|string $relations
-     * @return $this
-     */
-    public function with($relations)
-    {
-        if (is_array($relations)) {
-            $this->setRelations($relations);
-        } elseif (is_string($relations)) {
-        //If the developer provided multiple arguments we will merge them
-            $otherArgs = func_get_args();
-            $relations = array_merge($otherArgs, [$relations]);
-            $this->setRelations($relations);
-        }
-        return $this;
-    }
-
-    /**
-     * @param string $key
-     * @param string $direction
-     * @return $this
-     */
-    public function orderBy($key, $direction)
-    {
-        $this->order = [
-            'key'         => $key,
-            'direction'  => $direction
-        ];
-        $this->isSorted = true;
-        return $this;
-    }
     /**
      * @param $id
-     * @return BaseModel
-     */
-    protected function retrieve($id)
-    {
-
-        $namesOfRelations = $this->getRelations();
-
-        return $this->newQuery()->with($namesOfRelations)->find($id);
-    }
-
-
-    /**
-     * We Want To Check That the array being passed has at least
-     * one term to search by...
-     * @param  $perPage
-     * @param  array $searchArgs
+     * @param array $data
      * @return $this
      */
-    public function paginate($perPage, array $searchArgs = [])
+    public function update($id, array $data)
     {
-        $nameOfRelations = $this->getRelations();
-        $argsCount       = count($searchArgs);
+        $old = $this->retrieve($id);
 
+        $this->forget('id', $id);
 
-        if ($argsCount > 0) {
-            $model = $this->newQuery()
-                ->with($nameOfRelations);
+        $filtered = $this->filterModelData($data);
 
-            foreach ($searchArgs as $arg) {
-                $item           = new Argument($arg['key'], $arg['value']);
-                $item->operator = array_key_exists('operator', $arg) ? $arg['operator'] : '=';
-                $item->keyword  = array_key_exists('keyword', $arg) ? $arg['keyword'] : 'AND';
-                $this->arguments->push($item);
-            }
+        //Update the current Model
 
-            $model       =  $this->getModelFromSearch($model);
+        $old->update($filtered[0]);
 
-            $this->query =  $model->paginate($perPage);
+        //Wipe any possible cache bindings to parent relationships specified as such
+        //in setRelations()
+        $this->forgetParentModels($old);
 
-            return $this->query;
-        }
+        //Attempt to update the related models
+        $this->updateRelation($filtered[1], $old);
 
-        $this->query = $this->newQuery()
-            ->with($nameOfRelations)
-            ->paginate($perPage);
+        //Finally after the cache has been dumped, call retrieve again
+        //to put it back in with the updated fields.
 
-        return $this->query;
-    }
-
-    /**
-     * @param String $key
-     * @param String $value
-     * @param array $operators
-     * @param array $keywords
-     * @return BaseModel|[BaseModel]
-     * @throws MissingKeyException
-     * @throws MissingValueException
-     */
-    public function where($key, $value, array $operators = ['='], array $keywords = ['AND'])
-    {
-        $namesOfRelations = $this->getRelations();
-
-        /** @var BaseModel $model */
-        $model = $this->newQuery()->with($namesOfRelations);
-
-        //if this method is called from a cache callback
-        //then the arguments will have already been set.
-        //so there's no reason to set them twice
-        if ($this->arguments->isEmpty()) {
-            $this->setArguments($key, $value, $operators, $keywords);
-        }
-
-        /** @var \Eloquent $model */
-        $model       = $this->getModelFromSearch($model);
-        $this->query = $model;
-
-        return $model->get();
-    }
-
-    /**
-     * Returns a filtered out model using search params passed.
-     * We know that all entities will have an id column, so by
-     * default we allow those queries through, all other keys need to pass the test.
-     * otherwise we keep building up the query.
-     * We will check for % signs indicating a LIKE query.
-     * We will skip all empty K/V pairs.
-     * @param \Illuminate\Database\Query\Builder $model
-     * @return BaseModel
-     */
-    protected function getModelFromSearch($model)
-    {
-        $results = $model;
-
-        if ($this->isSorted && !empty($this->order['key']) && !empty($this->order['direction'])) {
-            $results->orderBy($this->order['key'], $this->order['direction']);
-        }
-
-        $fillable = $this->getFillableColumns();
-
-        foreach ($this->arguments as $key => $arg) {
-
-            if (in_array($arg->key, $this->defaultAccessible) || in_array($arg->key, $fillable)) {
-
-                if ($arg->value == null) {
-                    continue;
-                }
-
-                if (strpos($arg->value, $this->betweenOperator) !== false) {
-                //if the value is to be in a ballpark we shall simply call
-                    //laravels method for this and continue onward..
-                    $betweenThese = explode($this->betweenOperator, $arg->value);
-                    $results      = $model->whereBetween(
-                        $arg->key,
-                        [$betweenThese[0],$betweenThese[1]]
-                    );
-                    continue;
-                }
-
-                if (preg_match('/%(.*?)%/', $arg->value) >= 1) {
-                //if the string starts & ends with % and
-                    //if the operator isn't LIKE, we will make it so.
-                    $arg->operator = 'LIKE';
-                }
-
-                if ($key <= 0) {
-                    $results = $model->where($arg->key, $arg->operator, $arg->value);
-
-                } else {
-                    $results = $model->where(
-                        $arg->key,
-                        $arg->operator,
-                        $arg->value,
-                        $arg->keyword
-                    );
-                }
-            }
-        }
-        return $results;
-    }
-
-    public function getFillableColumns()
-    {
-         $fillableColumns = [];
-         $modelFillable = $this->newQuery()->getFillable();
-         if(count($modelFillable) <= 0)
-         {
-             $modelFillable = $this->newQuery()->getColumns();
-         }
-
-
-        //Get All The Columns From The Related Models
-        if ($this->updatesChildren && count($this->relations) >= 1) {
-            foreach ($this->relations->toArray() as $relation) {
-                if (!$relation->nested) {
-                    /** @var BaseModel $relatedModel */
-                    $name         = $relation->name;
-
-                    $relatedModel = $this->newQuery()->$name()->first();
-
-                    if ($relatedModel !== null) {
-                        $guarded           = $relatedModel->getGuarded();
-                        $fillableColumns[] = $relation->getColumns();
-
-                        //Unset properties that have been explicitly marked as gaurded.
-                        foreach ($guarded as $k => $v) {
-                            unset($fillableColumns[$k]);
-                        }
-                    }
-                }
-            }
-        }
-  
-        //Get All The Columns From The Current Model
-        foreach ($modelFillable as $key => $col) {
-            $fillableColumns[$key] = $col;
-        }
-        return $fillableColumns;
+        return $this->retrieve($id);
     }
 
     /**
      * @param array $data
-     * @return array
+     * @return BaseModel
      */
-    public function filterModelData(array $data)
+    public function create(array $data)
     {
-        $filtered = [];
-        $notUsed  = [];
-        //Basically prevent failure by using the valid columns to make sure
-        //that any input passed in actually exists in the DB.
-        foreach ($data as $key => $attribute) {
-            if (in_array($key, $this->getFillableColumns(), true)) {
-                $filtered[$key] = $attribute;
-            } else {
-                $notUsed[$key] = $attribute;
-            }
-        }
-        return [$filtered, $notUsed];
+        $filtered        = $this->filterModelData($data);
+        $model           = $this->model->create($filtered[0]);
+
+        //Call Find to retrieve related.
+        $model           = $this->retrieve($model->id);
+
+        $this->forgetParentModels($model);
+
+        //Finally, return the query for method chaining.
+        return $model;
+    }
+
+    /**
+     * @param $id
+     * @return BaseModel
+     */
+    public function find($id)
+    {
+        //Cache forever.
+        $this->setCacheLifeTime(0);
+        //Retrieve first model model from array.
+        $argument = new Argument('id', $id);
+        $this->arguments->push($argument);
+
+        $this->query = $this->cache(function () use ($id) {
+            return $this->retrieve($id);
+        });
+
+        //cache() returns a collection, so lets give back the first model.
+
+        return $this->query;
     }
 
 
-    /* Catch any missed Eloquent methods
+    /**
+     * This method will flush all ids from the cache,
+     * and then proceed to delete them.
+     * If the resource was deleted this will also return false
+     * @param $id
+     * @return bool
+     */
+    public function destroy($ids)
+    {
+        $ids       = (array)$ids;
+        $didDelete = false;
+
+        foreach ($ids as $id) {
+            $this->forget('id', $id);
+        }
+
+        $didDelete =  $this->model->destroy($ids) >= 1;
+
+        return $didDelete;
+    }
+
+    public function forceDelete($id)
+    {
+        $this->forget('id', $id);
+        if ($this->supportsDeletes) {
+            $this->model->find($id)->forceDelete();
+        } else {
+            $this->model->find($id)->delete();
+        }
+    }
+
+    /**
+     * This method will restore the model,
+     * recache it, and return it.
+     * @param $id
+     * @return \Illuminate\Support\Collection|null|static
+     */
+    public function restore($id)
+    {
+        $this->forget('id', $id);
+
+        $user = $this->newQuery()->find($id);
+
+        if ($this->supportsDeletes) {
+            $user->restore($id);
+        }
+
+        return $user;
+    }
+
+    /**
+     * This resolves out of the cache unlike paginated calls.
+     * Accurate data should use the regular where().
+     * @param  $key
+     * @param  $value
+     * @param  $operators
+     * @param  $keywords
+     * @throws MissingValueException
+     * @throws MissingKeyException
+     * @return Collection
+     */
+    public function whereCached($key, $value, array $operators = ['='], array $keywords = ['AND'])
+    {
+
+        $callback  = function () use ($key, $value, $operators, $keywords) {
+            return $this->where($key, $value, $operators, $keywords);
+        };
+
+        return $this->cache($callback);
+    }
+
+    /**
+     * @return array
+     */
+    public function getFillableColumns()
+    {
+        return Cache::rememberForever("{$this->name}.fillable", function () {
+            return parent::getFillableColumns();
+        });
+    }
+
+    /**
+     * This method make it possible to update distant relatives
+     * of a model by passing in key specific columns while
+     * updating the cache of related entities if required.
+     * @param $filtered
+     * @param $model
+     * @return BaseModel
+     */
+    private function updateRelation($filtered, $model)
+    {
+        if (!$this->updatesChildren || count($filtered) <= 0) {
+            return $model;
+        }
+
+        foreach ($this->relations->toArray() as $relation) {
+            $fieldsToUpdateForRelation = [];
+            /** @var BaseModel $relatedModel */
+
+            $name         = $relation->name;
+            $relatedModel = $model->$name;
+
+            if (array_key_exists($name, $filtered)) {
+            /** @var array $modelFields */
+                $modelFields = $filtered[$name];
+                foreach ($modelFields as $key => $possibleFieldToUpdate) {
+                    if (in_array($key, $relation->columns, true)) {
+                        $fieldsToUpdateForRelation[$key] = $possibleFieldToUpdate;
+                    }
+                }
+            }
+
+            if (count($fieldsToUpdateForRelation) > 0) {
+                $relatedModel->update($fieldsToUpdateForRelation);
+
+                $model->$name  = $relatedModel;
+            }
+        }
+
+        return $model;
+    }
+
+    /*
+     * @var string $idKey
+     * @var string $cacheKey
+     * @return void
+     */
+
+    public static function squash($idKey, $cacheKey)
+    {
+        Cache::tags($idKey)->flush();
+
+        //Techically the tag flush should be enough to dump it out
+        //But if for whatever the developer doesn't pass in an, then
+        //this should definately get rid of it.
+
+        if (Cache::has($cacheKey)) {
+            Cache::forget($cacheKey);
+        }
+
+    }
+
+    /**
+     * Forget the cache for a specific Id.
+     * @param $key
+     * @param $value
+     * @param $name
+     * @return bool
+     */
+    public function forget($key, $value, $name = null)
+    {
+        //Flush out the existing arguments
+        $this->arguments = new Collection();
+        $cacheArg        = new Argument($key, $value);
+
+        if ($name == null) {
+            $name = $this->name;
+        }
+
+        $this->arguments->push($cacheArg);
+
+        //This key will only be of the model we want to forget
+        $cacheKey  = $this->getCacheKey($name);
+        $cacheArgs = unserialize($cacheKey);
+        $idKey     = $name.'|'.$cacheArgs['key'].'|'.$cacheArgs['value'];
+
+        self::squash($idKey, $cacheKey);
+
+        //We're going to "broadcast" the cache dump,
+        //So any listening parties can also remove their version of model
+        Queue::push(function ($job) use ($key, $value, $name)
+        {
+            $request                   = new Networking();
+            $request->options['query'] = true;
+            $broadcastUrls             = config('cacherepository.removal_broadcast_urls');
+
+            foreach ($broadcastUrls as $url) {
+                $request->baseUrl = $url;
+
+                $payload = [
+                    'key'    => $key,
+                    'value'  => $value,
+                    'name'   => $name
+                ];
+
+                $request->send($payload, "/cache/broadcast", 'GET');
+            }
+            $job->delete();
+        });
+
+
+        return true;
+    }
+
+    /**
+     * We're going to check for parent models whose relations
+     * are cached and can be removed. If the relation exists, we'll
+     * forget each relatedee.
+     * @param $model
+     */
+
+    public function forgetParentModels($model)
+    {
+        foreach ($this->relations->toArray() as $relation) {
+            if ($relation->clearCache) {
+                $nameOfRelated  = $relation->name;
+                $relatedModels  = $model->$nameOfRelated;
+
+                if ($relatedModels instanceof Collection) {
+                    foreach ($relatedModels->toArray() as $relatedModel) {
+                        $this->forget('id', $relatedModel['id'], str_singular($relation->name));
+                        }
+                } elseif ($relatedModels instanceof BaseModel) {
+                    $this->forget('id', $relatedModels['id'], str_singular($relation->name));
+                }
+                    //If the developer specified a relation, but it doesn't contain anything
+                    //then there isn't anything to clear anyway.
+            }
+        }
+    }
+
+
+    /**
+     * @param $data
      * @return mixed
      */
-    public function __call($method, $params)
+    public static function timestamps($data)
     {
-        return $this->model->$method($params);
+        $copy = $data;
+
+        $now = \Carbon\Carbon::createFromTimestamp(time());
+        $copy['created_at'] = $now;
+        $copy['updated_at'] = $now;
+
+        return $copy;
+    }
+
+
+    /**
+     * @param callable $query
+     * @return Collection
+     */
+    private function cache(callable $query)
+    {
+
+        //If set to -1, we won't cache anything and simply return the query.
+        if ($this->getCacheLifeTime() == -1) {
+            return $query();
+        }
+
+        //If for whatever reason no arguments are set,
+        //We will try to get them from the query
+        if ($this->arguments->isEmpty()) {
+            $function = new \ReflectionFunction($query);
+            $args     = $function->getStaticVariables();
+            $this->setArguments($args['key'], $args['value'], $args['operators'], $args['keywords']);
+        }
+
+        $cacheKey         = $this->getCacheKey();
+        $cacheArgs        = unserialize($cacheKey);
+        $idTagKey         = $this->name.'|'.$cacheArgs['key'].'|'.$cacheArgs['value'];
+
+        $collectionTagKey = $this->name;
+
+        if ($this->getCacheLifeTime() === 0) {
+        //Infinitely tag all related models no matter what relations are used for later
+            //For example, we might call a User object with a certain relation one time,
+            //and another the next.
+            return Cache::tags($idTagKey, $collectionTagKey)->rememberForever($cacheKey, function () 
+                use ($query){
+            
+                /** @var Collection $this */
+                return $query();
+            });
+        } else {
+            return Cache::tags($idTagKey, $collectionTagKey)->remember($cacheKey, $this->getCacheLifeTime(), function () 
+                use ($query){
+            
+                /** @var Collection $this */
+                return $query();
+            });
+        }
+    }
+
+    /*
+     * @param string $modelName
+     * @return array
+     */
+    private function getCacheKey($modelName = null)
+    {
+        $args =  [
+            'key'       => $this->arguments->implode('key', '|'),
+            'value'     => $this->arguments->implode('value', '|'),
+            'operators' => $this->arguments->implode('operator', '|'),
+            'keywords'  => $this->arguments->implode('keyword', '|'),
+            'name'      => $modelName !== null ? $modelName : $this->name,
+            'relations' => count($this->relations) >= 1 ? $this->relations->implode('name', '|') : '|'
+        ];
+
+        return serialize($args);
     }
 }
