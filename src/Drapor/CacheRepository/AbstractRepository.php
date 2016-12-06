@@ -396,9 +396,10 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         if ($this->isSorted && !empty($this->order['key']) && !empty($this->order['direction'])) {
             $results->orderBy($this->order['key'], $this->order['direction']);
         }
+        $fillable = $this->getFillableColumns();
 
         foreach ($this->arguments as $key => $arg) {
-            if (in_array($arg->key, $this->defaultAccessible) || in_array($arg->key, $this->getFillableColumns())) {
+            if (in_array($arg->key, $this->defaultAccessible) || in_array($arg->key, $fillable)) {
                 if ($arg->value == null) {
                     continue;
                 }
