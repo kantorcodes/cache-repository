@@ -496,6 +496,6 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
      */
     public function __call($method, $params)
     {
-        return $this->model->$method($params);
+        return call_user_func_array([$this->model, $method],$params);
     }
 }
