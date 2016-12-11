@@ -256,7 +256,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
     public function getRelations()
     {
         if (count($this->relations) >= 1) {
-            $relations =  $this->relations->lists('name');
+            $relations =  $this->relations->pluck('name');
             //Laravel 5.1 compatability change
             if ($relations instanceof Collection) {
                 $relations = $relations->toArray();
