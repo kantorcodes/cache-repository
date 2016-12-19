@@ -398,8 +398,10 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         }
         $fillable = $this->getFillableColumns();
 
+
         foreach ($this->arguments as $key => $arg) {
             if (in_array($arg->key, $this->defaultAccessible) || in_array($arg->key, $fillable)) {
+          
                 if ($arg->value == null) {
                     continue;
                 }
@@ -450,19 +452,28 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
 
                     $relatedModel = $this->newQuery()->$name()->first();
 
-                    if ($relatedModel !== null) {
+                    if ($relatedModel !== null) 
+                    {
+                        $columns           =  array_combine($relatedModel->getColumns(),$relatedModel->getColumns());
                         $guarded           = $relatedModel->getGuarded();
-                        $fillableColumns[] = $relation->getColumns();
-
-                        //Unset properties that have been explicitly marked as gaurded.
-                        foreach ($guarded as $k => $v) {
-                            unset($fillableColumns[$k]);
+                        foreach ($guarded as $gaurd) 
+                        {
+                            unset($columns[$gaurd]);
                         }
+                        $fillableColumns[] = $columns;
+                        //Unset properties that have been explicitly marked as gaurded.
                     }
                 }
             }
         }
-        $modelColumns =  $this->newQuery()->getFillable();
+        $m            =   $this->newQuery();
+        $gaurded      =   $m->getGuarded();
+        $columns      =   array_combine($m->getColumns(),$m->getColumns());
+        foreach($gaurded as $gaurd)
+        {
+           unset($columns[$gaurd]);
+        }
+        $modelColumns =  array_merge($m->getColumns(), $m->getFillable());
         //Get All The Columns From The Current Model
         foreach ($modelColumns as $key => $col) {
             $fillableColumns[$key] = $col;
