@@ -317,29 +317,6 @@ class CacheRepository extends AbstractRepository
 
         self::squash($idKey, $cacheKey);
 
-        //We're going to "broadcast" the cache dump,
-        //So any listening parties can also remove their version of model
-        Queue::push(function ($job) use ($key, $value, $name)
-        {
-            $request                   = new Networking();
-            $request->options['query'] = true;
-            $broadcastUrls             = config('cacherepository.removal_broadcast_urls');
-
-            foreach ($broadcastUrls as $url) {
-                $request->baseUrl = $url;
-
-                $payload = [
-                    'key'    => $key,
-                    'value'  => $value,
-                    'name'   => $name
-                ];
-
-                $request->send($payload, "/cache/broadcast", 'GET');
-            }
-            $job->delete();
-        });
-
-
         return true;
     }
 
