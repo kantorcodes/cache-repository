@@ -9,11 +9,11 @@
 namespace Drapor\CacheRepository;
 
 use App;
-use Illuminate\Console\DetectsApplicationNamespace
+use Illuminate\Console\AppNamespaceDetectorTrait;
 
 class Relation
 {
-    use DetectsApplicationNamespace;
+    use AppNamespaceDetectorTrait;
     public $name = '';
     public $columns;
 
