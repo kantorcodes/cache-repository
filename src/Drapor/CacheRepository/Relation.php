@@ -8,21 +8,21 @@
 
 namespace Drapor\CacheRepository;
 
-
 use App;
 use Illuminate\Console\AppNamespaceDetectorTrait;
 
 class Relation
 {
+
     use AppNamespaceDetectorTrait;
     public $name = '';
     public $columns;
 
     public $nested;
 
-    /* 
-       Indicates weather or not a parent relation exists which needs its
-       cache bindings cleared when updated.
+    /*
+    Indicates weather or not a parent relation exists which needs its
+    cache bindings cleared when updated.
      */
     public $clearCache;
 
@@ -42,7 +42,7 @@ class Relation
         $this->clearCache = $clearCache;
     }
 
-    public function __construct($name,$clearCache = false)
+    public function __construct($name, $clearCache = false)
     {
         $this->name       = $name;
         $this->clearCache = $clearCache;
@@ -51,7 +51,7 @@ class Relation
         if (!$this->nested)
         {
 
-            if(class_exists($name))
+            if (class_exists($name))
             {
                 $model         = App::make($name);
                 $this->name    = (new \ReflectionClass($name))->getShortName();
@@ -59,19 +59,19 @@ class Relation
             }
             else
             {
-                $appName       = $this->getAppNamespace();
+                $appName = $this->getAppNamespace();
                 /** @var \Drapor\CacheRepository\Eloquent\BaseModel $model */
-                $modelLocation =  config('cacherepository.modelLocation');
-                $modelName     =  str_singular(studly_case($this->name));
-                if(is_array($modelLocation) && array_key_exists($modelName, $modelLocation))
+                $modelLocation = config('cacherepository.modelLocation');
+                $modelName     = str_singular(studly_case($this->name));
+                if (is_array($modelLocation) && array_key_exists($modelName, $modelLocation))
                 {
                     $modelLocation = $modelLocation[$modelName];
                 }
-                $model   =  App::make(str_replace('\\\\','\\',sprintf("%s%s\\%s",$appName,$modelLocation,$modelName)));
+                $model = App::make(str_replace('\\\\', '\\', sprintf("%s%s\\%s", $appName, $modelLocation, $modelName)));
                 //Quickly create an instance of the model and grab its fillable fields from cache.
                 $this->columns = $model->getColumns();
-          }
-        } 
+            }
+        }
         else
         {
             //if its a nested relationship, we don't care about its fillable columns.
@@ -87,7 +87,8 @@ class Relation
         return $this->columns;
     }
 
-    public function __toString(){
+    public function __toString()
+    {
         return $this->name;
     }
 }
