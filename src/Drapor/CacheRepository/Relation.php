@@ -9,11 +9,11 @@
 namespace Drapor\CacheRepository;
 
 use App;
-use Illuminate\Console\AppNamespaceDetectorTrait;
+use Illuminate\Console\DetectsApplicationNamespace;
 
 class Relation
 {
-    use AppNamespaceDetectorTrait;
+    use DetectsApplicationNamespace;
     public $name = '';
     public $columns;
 
@@ -61,12 +61,19 @@ class Relation
                 $appName = $this->getAppNamespace();
                 /** @var \Drapor\CacheRepository\Eloquent\BaseModel $model */
                 $modelLocation = config('cacherepository.modelLocation');
-                $modelName     = str_singular(studly_case($this->name));
+
+                $modelName = str_singular(studly_case($this->name));
                 if (is_array($modelLocation) && array_key_exists($modelName, $modelLocation))
                 {
                     $modelLocation = $modelLocation[$modelName];
                 }
-                $model = App::make(str_replace('\\\\', '\\', sprintf("%s%s\\%s", $appName, $modelLocation, $modelName)));
+                try {
+                    $model = App::make(str_replace('\\\\', '\\', sprintf("%s%s\\%s", $appName, $modelLocation, $modelName)));
+                }
+                catch (\Exception $e)
+                {
+                    dd($modelLocation);
+                }
                 //Quickly create an instance of the model and grab its fillable fields from cache.
                 $this->columns = $model->getColumns();
             }
