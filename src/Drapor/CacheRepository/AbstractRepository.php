@@ -1,12 +1,12 @@
 <?php namespace Drapor\CacheRepository;
 
-use Drapor\CacheRepository\Eloquent\BaseModel;
 use Drapor\CacheRepository\Contracts\EloquentRepositoryInterface;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Drapor\CacheRepository\Eloquent\BaseModel;
 use Drapor\CacheRepository\Exceptions\MissingKeyException;
 use Drapor\CacheRepository\Exceptions\MissingValueException;
 use Drapor\CacheRepository\Relation;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 abstract class AbstractRepository implements EloquentRepositoryInterface
 {
@@ -24,7 +24,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
     /* @var $relations Collection */
     protected $relations;
 
-    protected $defaultAccessible = ['id','created_at','updated_at'];
+    protected $defaultAccessible = ['id', 'created_at', 'updated_at'];
 
     protected $withTrashed;
 
@@ -53,32 +53,32 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
     }
 
     /*
-       @return BaseModel
+    @return BaseModel
      */
     abstract function update($id, array $data);
     /*
-     @return BaseModel
-   */
+    @return BaseModel
+     */
     abstract function find($id);
 
     /*
-      @return BaseModel
-    */
+    @return BaseModel
+     */
     abstract function create(array $data);
 
     /*
-     @return Bool
-   */
+    @return Bool
+     */
     abstract function destroy($ids);
 
     /*
-      @return Bool
-    */
+    @return Bool
+     */
     abstract function forceDelete($id);
 
     /*
-      @return BaseModel
-    */
+    @return BaseModel
+     */
     abstract function restore($id);
 
     /**
@@ -86,7 +86,8 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
      */
     public function get()
     {
-        if ($this->query == null) {
+        if ($this->query == null)
+        {
             $this->query = $this->newQuery()
                 ->with($this->getRelations());
 
@@ -100,7 +101,8 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
      */
     public function getQuery()
     {
-        if ($this->query == null) {
+        if ($this->query == null)
+        {
             return $this->query = new $this->model;
         }
         return $this->query;
@@ -154,13 +156,15 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         //This simple check should ensure that if called
         //after a query was already executed, that the proceeding one will
         //be brand new.
-        if ($this->query !== null) {
+        if ($this->query !== null)
+        {
             $this->arguments = new Collection();
         }
 
-        $this->query     =  new $this->model;
-        if ($this->withTrashed && $this->supportsDeletes) {
-        //SomeModel::withTrashed()->...
+        $this->query = new $this->model;
+        if ($this->withTrashed && $this->supportsDeletes)
+        {
+            //SomeModel::withTrashed()->...
             $this->query = $this->query->withTrashed();
         }
 
@@ -175,7 +179,6 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         return $this->model->getFillable();
     }
 
-
     /**
      * @param $key
      * @param $value
@@ -186,23 +189,26 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
      */
     protected function setArguments($key, $value, array $operators, array $keywords)
     {
-        $key      = (array)$key;
-        $value    = (array)$value;
+        $key      = (array) $key;
+        $value    = (array) $value;
         $argCount = count($key);
 
-        for ($i = 0; $i < $argCount; $i++) {
-            if (!array_key_exists($i, $key)) {
+        for ($i = 0; $i < $argCount; $i++)
+        {
+            if (!array_key_exists($i, $key))
+            {
                 $data = [
                     'arguments' => $argCount,
-                    'keys'      => count($key)
+                    'keys' => count($key),
                 ];
                 throw new MissingKeyException($data);
             }
 
-            if (!array_key_exists($i, $value)) {
+            if (!array_key_exists($i, $value))
+            {
                 $data = [
                     'arguments' => $argCount,
-                    'values' => count($value)
+                    'values' => count($value),
                 ];
                 throw new MissingValueException($data);
             }
@@ -228,20 +234,26 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
     public function setRelations(array $relations)
     {
         $collection = [];
-        foreach ($relations as $relation) {
-        //If the developer passes in a Relation,
+        foreach ($relations as $relation)
+        {
+            //If the developer passes in a Relation,
             // we'll just roll with that, otherwise, we'll type check
-            if ($relation instanceof Relation) {
+            if ($relation instanceof Relation)
+            {
                 $collection[$relation->name] = $relation;
                 continue;
             }
 
-            if (!is_array($relation)) {
+            if (!is_array($relation))
+            {
                 $collection[$relation] = new Relation($relation);
-            } else {
+            }
+            else
+            {
                 //**will depreciate
                 $r = new Relation($relation['name']);
-                if (array_key_exists('clearcache', $relation)) {
+                if (array_key_exists('clearcache', $relation))
+                {
                     $r->setClearCache($relation['clearcache']);
                 }
                 $collection[$r->name] = $relation;
@@ -255,14 +267,18 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
      */
     public function getRelations()
     {
-        if (count($this->relations) >= 1) {
-            $relations =  $this->relations->pluck('name');
+        if (count($this->relations) >= 1)
+        {
+            $relations = $this->relations->pluck('name');
             //Laravel 5.1 compatability change
-            if ($relations instanceof Collection) {
+            if ($relations instanceof Collection)
+            {
                 $relations = $relations->toArray();
             }
             return $relations;
-        } else {
+        }
+        else
+        {
             return [];
         }
     }
@@ -273,10 +289,13 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
      */
     public function with($relations)
     {
-        if (is_array($relations)) {
+        if (is_array($relations))
+        {
             $this->setRelations($relations);
-        } elseif (is_string($relations)) {
-        //If the developer provided multiple arguments we will merge them
+        }
+        elseif (is_string($relations))
+        {
+            //If the developer provided multiple arguments we will merge them
             $otherArgs = func_get_args();
             $relations = array_merge($otherArgs, [$relations]);
             $this->setRelations($relations);
@@ -292,8 +311,8 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
     public function orderBy($key, $direction)
     {
         $this->order = [
-            'key'         => $key,
-            'direction'  => $direction
+            'key' => $key,
+            'direction' => $direction,
         ];
         $this->isSorted = true;
         return $this;
@@ -310,7 +329,6 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         return $this->newQuery()->with($namesOfRelations)->find($id);
     }
 
-
     /**
      * We Want To Check That the array being passed has at least
      * one term to search by...
@@ -323,21 +341,22 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         $nameOfRelations = $this->getRelations();
         $argsCount       = count($searchArgs);
 
-
-        if ($argsCount > 0) {
+        if ($argsCount > 0)
+        {
             $model = $this->newQuery()
                 ->with($nameOfRelations);
 
-            foreach ($searchArgs as $arg) {
+            foreach ($searchArgs as $arg)
+            {
                 $item           = new Argument($arg['key'], $arg['value']);
                 $item->operator = array_key_exists('operator', $arg) ? $arg['operator'] : '=';
                 $item->keyword  = array_key_exists('keyword', $arg) ? $arg['keyword'] : 'AND';
                 $this->arguments->push($item);
             }
 
-            $model       =  $this->getModelFromSearch($model);
+            $model = $this->getModelFromSearch($model);
 
-            $this->query =  $model->paginate($perPage);
+            $this->query = $model->paginate($perPage);
 
             return $this->query;
         }
@@ -368,7 +387,8 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         //if this method is called from a cache callback
         //then the arguments will have already been set.
         //so there's no reason to set them twice
-        if ($this->arguments->isEmpty()) {
+        if ($this->arguments->isEmpty())
+        {
             $this->setArguments($key, $value, $operators, $keywords);
         }
 
@@ -393,40 +413,58 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
     {
         $results = $model;
 
-        if ($this->isSorted && !empty($this->order['key']) && !empty($this->order['direction'])) {
+        if ($this->isSorted && !empty($this->order['key']) && !empty($this->order['direction']))
+        {
             $results->orderBy($this->order['key'], $this->order['direction']);
         }
         $fillable = $this->getFillableColumns();
 
+        foreach ($this->arguments as $key => $arg)
+        {
+            if (in_array($arg->key, $this->defaultAccessible) || in_array($arg->key, $fillable))
+            {
 
-        foreach ($this->arguments as $key => $arg) {
-            if (in_array($arg->key, $this->defaultAccessible) || in_array($arg->key, $fillable)) {
-          
-                if ($arg->value == null) {
+                if ($arg->value == null)
+                {
                     continue;
                 }
 
-                if (strpos($arg->value, $this->betweenOperator) !== false) {
-                //if the value is to be in a ballpark we shall simply call
+                if (strpos($arg->value, $this->betweenOperator) !== false)
+                {
+                    //if the value is to be in a ballpark we shall simply call
                     //laravels method for this and continue onward..
                     $betweenThese = explode($this->betweenOperator, $arg->value);
                     $results      = $model->whereBetween(
                         $arg->key,
-                        [$betweenThese[0],$betweenThese[1]]
+                        [$betweenThese[0], $betweenThese[1]]
                     );
                     continue;
                 }
 
-                if (preg_match('/%(.*?)%/', $arg->value) >= 1) {
-                //if the string starts & ends with % and
+                if (preg_match("/\|/", $arg->value) >= 1)
+                {
+                    $values = explode('|', $arg->value);
+                    if (count($values) > 1)
+                    {
+                        $results = $model->whereIn($arg->key, $values);
+                        continue;
+                    }
+                }
+
+                if (preg_match('/%(.*?)%/', $arg->value) >= 1)
+                {
+                    //if the string starts & ends with % and
                     //if the operator isn't LIKE, we will make it so.
                     $arg->operator = 'LIKE';
                 }
 
-                if ($key <= 0) {
+                if ($key <= 0)
+                {
                     $results = $model->where($arg->key, $arg->operator, $arg->value);
 
-                } else {
+                }
+                else
+                {
                     $results = $model->where(
                         $arg->key,
                         $arg->operator,
@@ -444,19 +482,22 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         $fillableColumns = [];
 
         //Get All The Columns From The Related Models
-        if ($this->updatesChildren && count($this->relations) >= 1) {
-            foreach ($this->relations->toArray() as $relation) {
-                if (!$relation->nested) {
+        if ($this->updatesChildren && count($this->relations) >= 1)
+        {
+            foreach ($this->relations->toArray() as $relation)
+            {
+                if (!$relation->nested)
+                {
                     /** @var BaseModel $relatedModel */
-                    $name         = $relation->name;
+                    $name = $relation->name;
 
                     $relatedModel = $this->newQuery()->$name()->first();
 
-                    if ($relatedModel !== null) 
+                    if ($relatedModel !== null)
                     {
-                        $columns           =  array_combine($relatedModel->getColumns(),$relatedModel->getColumns());
-                        $guarded           = $relatedModel->getGuarded();
-                        foreach ($guarded as $gaurd) 
+                        $columns = array_combine($relatedModel->getColumns(), $relatedModel->getColumns());
+                        $guarded = $relatedModel->getGuarded();
+                        foreach ($guarded as $gaurd)
                         {
                             unset($columns[$gaurd]);
                         }
@@ -466,16 +507,17 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
                 }
             }
         }
-        $m            =   $this->newQuery();
-        $gaurded      =   $m->getGuarded();
-        $columns      =   array_combine($m->getColumns(),$m->getColumns());
-        foreach($gaurded as $gaurd)
+        $m       = $this->newQuery();
+        $gaurded = $m->getGuarded();
+        $columns = array_combine($m->getColumns(), $m->getColumns());
+        foreach ($gaurded as $gaurd)
         {
-           unset($columns[$gaurd]);
+            unset($columns[$gaurd]);
         }
-        $modelColumns =  array_merge($m->getColumns(), $m->getFillable());
+        $modelColumns = array_merge($m->getColumns(), $m->getFillable());
         //Get All The Columns From The Current Model
-        foreach ($modelColumns as $key => $col) {
+        foreach ($modelColumns as $key => $col)
+        {
             $fillableColumns[$key] = $col;
         }
         return $fillableColumns;
@@ -491,16 +533,19 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         $notUsed  = [];
         //Basically prevent failure by using the valid columns to make sure
         //that any input passed in actually exists in the DB.
-        foreach ($data as $key => $attribute) {
-            if (in_array($key, $this->getFillableColumns(), true)) {
+        foreach ($data as $key => $attribute)
+        {
+            if (in_array($key, $this->getFillableColumns(), true))
+            {
                 $filtered[$key] = $attribute;
-            } else {
+            }
+            else
+            {
                 $notUsed[$key] = $attribute;
             }
         }
         return [$filtered, $notUsed];
     }
-
 
     /* Catch any missed Eloquent methods
      * @return mixed
@@ -510,6 +555,6 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         $namesOfRelations = $this->getRelations();
         /** @var BaseModel $model */
         $model = $this->newQuery()->with($namesOfRelations);
-        return call_user_func_array([$model,$method],$params);
+        return call_user_func_array([$model, $method], $params);
     }
 }
