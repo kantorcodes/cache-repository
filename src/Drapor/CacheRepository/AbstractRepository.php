@@ -446,7 +446,10 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
                     $values = explode('|', $arg->value);
                     if (count($values) > 1)
                     {
-                        $results = $model->whereIn($arg->key, $values);
+                        $results = $model->orWhere(function ($query) use ($values, $arg)
+                        {
+                            $query->orWhereIn($arg->key, $values);
+                        });
                         continue;
                     }
                 }
