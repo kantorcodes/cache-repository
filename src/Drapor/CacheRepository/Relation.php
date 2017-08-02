@@ -66,16 +66,27 @@ class Relation
                 if (is_array($modelLocation) && array_key_exists($modelName, $modelLocation))
                 {
                     $modelLocation = $modelLocation[$modelName];
+
                 }
-                try {
-                    $model = App::make(str_replace('\\\\', '\\', sprintf("%s%s\\%s", $appName, $modelLocation, $modelName)));
-                }
-                catch (\Exception $e)
+                if (class_exists($modelLocation))
                 {
-                    dd($modelLocation);
+                    $model         = App::make($modelLocation);
+                    $this->name    = (new \ReflectionClass($modelLocation))->getShortName();
+                    $this->columns = $model->getColumns();
                 }
-                //Quickly create an instance of the model and grab its fillable fields from cache.
-                $this->columns = $model->getColumns();
+                else
+                {
+                    try {
+
+                        $model = App::make(str_replace('\\\\', '\\', sprintf("%s%s\\%s", $appName, $modelLocation, $modelName)));
+                    }
+                    catch (\Exception $e)
+                    {
+                        info("failed to find model at {$modelLocation}");
+                    }
+                    //Quickly create an instance of the model and grab its fillable fields from cache.
+                    $this->columns = $model->getColumns();
+                }
             }
         }
         else
