@@ -55,31 +55,31 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
     /*
     @return BaseModel
      */
-    abstract function update($id, array $data);
+    abstract public function update($id, array $data);
     /*
     @return BaseModel
      */
-    abstract function find($id);
+    abstract public function find($id);
 
     /*
     @return BaseModel
      */
-    abstract function create(array $data);
+    abstract public function create(array $data);
 
     /*
     @return Bool
      */
-    abstract function destroy($ids);
+    abstract public function destroy($ids);
 
     /*
     @return Bool
      */
-    abstract function forceDelete($id);
+    abstract public function forceDelete($id);
 
     /*
     @return BaseModel
      */
-    abstract function restore($id);
+    abstract public function restore($id);
 
     /**
      * @return Collection|BaseModel
@@ -434,26 +434,18 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
                     //if the value is to be in a ballpark we shall simply call
                     //laravels method for this and continue onward..
                     $betweenThese = explode($this->betweenOperator, $arg->value);
-                    $results      = $model->whereBetween(
+                    $results      = $results->whereBetween(
                         $arg->key,
                         [$betweenThese[0], $betweenThese[1]]
                     );
                     continue;
                 }
 
-                if (preg_match("/\|/", $arg->value) >= 1)
+                if (preg_match('/`(.*?)`/', $arg->value) >= 1)
                 {
-                    $values = explode('|', $arg->value);
-                    if (count($values) > 1)
-                    {
-                        $results = $model->orWhere(function ($query) use ($values, $arg)
-                        {
-                            $query->orWhereIn($arg->key, $values);
-                        });
-                        continue;
-                    }
+                    $arg->keyword = 'OR';
+                    $arg->value   = str_replace('`', '', $arg->value);
                 }
-
                 if (preg_match('/%(.*?)%/', $arg->value) >= 1)
                 {
                     //if the string starts & ends with % and
@@ -461,19 +453,20 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
                     $arg->operator = 'LIKE';
                 }
 
-                if ($key <= 0)
+                if ($key <= 0 && !isset($arg->operator))
                 {
-                    $results = $model->where($arg->key, $arg->operator, $arg->value);
+                    $results = $results->where($arg->key, $arg->operator, $arg->value);
 
                 }
                 else
                 {
-                    $results = $model->where(
+                    $results = $results->where(
                         $arg->key,
                         $arg->operator,
                         $arg->value,
                         $arg->keyword
                     );
+
                 }
             }
         }
