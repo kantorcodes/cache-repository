@@ -478,7 +478,7 @@ abstract class AbstractRepository implements EloquentRepositoryInterface
         $fillableColumns = [];
 
         //Get All The Columns From The Related Models
-        if ($this->updatesChildren && count($this->relations) >= 1)
+        if ($this->updatesChildren && is_array($this->relations) && count($this->relations) >= 1)
         {
             foreach ($this->relations->toArray() as $relation)
             {
