@@ -3,12 +3,8 @@
 namespace Drapor\CacheRepository;
 
 use Cache;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
 use Drapor\CacheRepository\Eloquent\BaseModel;
-use Drapor\CacheRepository\Contracts\EloquentRepositoryInterface;
-use Drapor\Networking\Networking;
-use Queue;
+use Illuminate\Support\Collection;
 
 /* @var $model \Eloquent  */
 
@@ -66,8 +62,7 @@ class CacheRepository extends AbstractRepository
     {
         $this->query = $this->newQuery();
 
-        $callback  = function () use ($key, $value, $relation) {
-
+        $callback = function () use ($key, $value, $relation) {
             $this->query->whereHas($relation, function ($query) use ($key, $value) {
                 /* @var $query Builder  */
                 return $query->where($key, $value)->get();
@@ -86,7 +81,7 @@ class CacheRepository extends AbstractRepository
      */
     public function update($id, array $data)
     {
-        $old = $this->retrieve($id);
+        $old = $this->find($id);
 
         $this->forget('id', $id);
 
@@ -106,7 +101,7 @@ class CacheRepository extends AbstractRepository
         //Finally after the cache has been dumped, call retrieve again
         //to put it back in with the updated fields.
 
-        return $this->retrieve($id);
+        return $this->find($id);
     }
 
     /**
@@ -115,11 +110,11 @@ class CacheRepository extends AbstractRepository
      */
     public function create(array $data)
     {
-        $filtered        = $this->filterModelData($data);
-        $model           = $this->model->create($filtered[0]);
+        $filtered = $this->filterModelData($data);
+        $model = $this->model->create($filtered[0]);
 
         //Call Find to retrieve related.
-        $model           = $this->retrieve($model->id);
+        $model = $this->retrieve($model->id);
 
         $this->forgetParentModels($model);
 
@@ -148,7 +143,6 @@ class CacheRepository extends AbstractRepository
         return $this->query;
     }
 
-
     /**
      * This method will flush all ids from the cache,
      * and then proceed to delete them.
@@ -158,14 +152,14 @@ class CacheRepository extends AbstractRepository
      */
     public function destroy($ids)
     {
-        $ids       = (array)$ids;
+        $ids = (array) $ids;
         $didDelete = false;
 
         foreach ($ids as $id) {
             $this->forget('id', $id);
         }
 
-        $didDelete =  $this->model->destroy($ids) >= 1;
+        $didDelete = $this->model->destroy($ids) >= 1;
 
         return $didDelete;
     }
@@ -212,8 +206,7 @@ class CacheRepository extends AbstractRepository
      */
     public function whereCached($key, $value, array $operators = ['='], array $keywords = ['AND'])
     {
-
-        $callback  = function () use ($key, $value, $operators, $keywords) {
+        $callback = function () use ($key, $value, $operators, $keywords) {
             return $this->where($key, $value, $operators, $keywords);
         };
 
@@ -248,11 +241,11 @@ class CacheRepository extends AbstractRepository
             $fieldsToUpdateForRelation = [];
             /** @var BaseModel $relatedModel */
 
-            $name         = $relation->name;
+            $name = $relation->name;
             $relatedModel = $model->$name;
 
             if (array_key_exists($name, $filtered)) {
-            /** @var array $modelFields */
+                /** @var array $modelFields */
                 $modelFields = $filtered[$name];
                 foreach ($modelFields as $key => $possibleFieldToUpdate) {
                     if (in_array($key, $relation->columns, true)) {
@@ -264,7 +257,7 @@ class CacheRepository extends AbstractRepository
             if (count($fieldsToUpdateForRelation) > 0) {
                 $relatedModel->update($fieldsToUpdateForRelation);
 
-                $model->$name  = $relatedModel;
+                $model->$name = $relatedModel;
             }
         }
 
@@ -288,7 +281,6 @@ class CacheRepository extends AbstractRepository
         if (Cache::has($cacheKey)) {
             Cache::forget($cacheKey);
         }
-
     }
 
     /**
@@ -300,9 +292,10 @@ class CacheRepository extends AbstractRepository
      */
     public function forget($key, $value, $name = null)
     {
+
         //Flush out the existing arguments
         $this->arguments = new Collection();
-        $cacheArg        = new Argument($key, $value);
+        $cacheArg = new Argument($key, $value);
 
         if ($name == null) {
             $name = $this->name;
@@ -311,11 +304,13 @@ class CacheRepository extends AbstractRepository
         $this->arguments->push($cacheArg);
 
         //This key will only be of the model we want to forget
-        $cacheKey  = $this->getCacheKey($name);
+        $cacheKey = $this->getCacheKey($name);
         $cacheArgs = unserialize($cacheKey);
-        $idKey     = $name.'|'.$cacheArgs['key'].'|'.$cacheArgs['value'];
+        $idKey = $name . '|' . $cacheArgs['key'] . '|' . $cacheArgs['value'];
 
         self::squash($idKey, $cacheKey);
+
+        $this->arguments = new Collection();
 
         return true;
     }
@@ -331,22 +326,21 @@ class CacheRepository extends AbstractRepository
     {
         foreach ($this->relations->toArray() as $relation) {
             if ($relation->clearCache) {
-                $nameOfRelated  = $relation->name;
-                $relatedModels  = $model->$nameOfRelated;
+                $nameOfRelated = $relation->name;
+                $relatedModels = $model->$nameOfRelated;
 
                 if ($relatedModels instanceof Collection) {
                     foreach ($relatedModels->toArray() as $relatedModel) {
                         $this->forget('id', $relatedModel['id'], str_singular($relation->name));
-                        }
+                    }
                 } elseif ($relatedModels instanceof BaseModel) {
                     $this->forget('id', $relatedModels['id'], str_singular($relation->name));
                 }
-                    //If the developer specified a relation, but it doesn't contain anything
-                    //then there isn't anything to clear anyway.
+                //If the developer specified a relation, but it doesn't contain anything
+                //then there isn't anything to clear anyway.
             }
         }
     }
-
 
     /**
      * @param $data
@@ -362,7 +356,6 @@ class CacheRepository extends AbstractRepository
 
         return $copy;
     }
-
 
     /**
      * @param callable $query
@@ -380,30 +373,27 @@ class CacheRepository extends AbstractRepository
         //We will try to get them from the query
         if ($this->arguments->isEmpty()) {
             $function = new \ReflectionFunction($query);
-            $args     = $function->getStaticVariables();
+            $args = $function->getStaticVariables();
             $this->setArguments($args['key'], $args['value'], $args['operators'], $args['keywords']);
         }
 
-        $cacheKey         = $this->getCacheKey();
-        $cacheArgs        = unserialize($cacheKey);
-        $idTagKey         = $this->name.'|'.$cacheArgs['key'].'|'.$cacheArgs['value'];
-
+        $cacheKey = $this->getCacheKey();
+        $cacheArgs = unserialize($cacheKey);
+        $idTagKey = $this->name . '|' . $cacheArgs['key'] . '|' . $cacheArgs['value'];
         $collectionTagKey = $this->name;
 
         if ($this->getCacheLifeTime() === 0) {
-        //Infinitely tag all related models no matter what relations are used for later
+            //Infinitely tag all related models no matter what relations are used for later
             //For example, we might call a User object with a certain relation one time,
             //and another the next.
-            return Cache::tags($idTagKey, $collectionTagKey)->rememberForever($cacheKey, function () 
-                use ($query){
-            
+            return Cache::tags($idTagKey, $collectionTagKey)->rememberForever($cacheKey, function () use ($query) {
+
                 /** @var Collection $this */
                 return $query();
             });
         } else {
-            return Cache::tags($idTagKey, $collectionTagKey)->remember($cacheKey, $this->getCacheLifeTime(), function () 
-                use ($query){
-            
+            return Cache::tags($idTagKey, $collectionTagKey)->remember($cacheKey, $this->getCacheLifeTime(), function () use ($query) {
+
                 /** @var Collection $this */
                 return $query();
             });
@@ -416,13 +406,13 @@ class CacheRepository extends AbstractRepository
      */
     private function getCacheKey($modelName = null)
     {
-        $args =  [
-            'key'       => $this->arguments->implode('key', '|'),
-            'value'     => $this->arguments->implode('value', '|'),
+        $args = [
+            'key' => $this->arguments->implode('key', '|'),
+            'value' => $this->arguments->implode('value', '|'),
             'operators' => $this->arguments->implode('operator', '|'),
-            'keywords'  => $this->arguments->implode('keyword', '|'),
-            'name'      => $modelName !== null ? $modelName : $this->name,
-            'relations' => count($this->relations) >= 1 ? $this->relations->implode('name', '|') : '|'
+            'keywords' => $this->arguments->implode('keyword', '|'),
+            'name' => $modelName !== null ? $modelName : $this->name,
+            'relations' => count($this->relations) >= 1 ? $this->relations->implode('name', '|') : '|',
         ];
 
         return serialize($args);
